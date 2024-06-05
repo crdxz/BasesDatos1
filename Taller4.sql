@@ -1,368 +1,300 @@
---- Taller No. 4 SQL - Consultas anidadas 
---- Yeisson Steven Cardozo Herran - 20192020131
---- Juan Murillo Nope - 20192020128
---- 
+-- 3. Liste los empleados que ganan el máximo salario 
+SELECT E.FIRST_NAME EMPLEADO 
+FROM S_EMP E, S_SALARY S 
+WHERE S.ID = E.ID AND 
+      S.PAYMENT = (SELECT MAX(S.PAYMENT) FROM S_SALARY S);
 
---- 1. Seleccione el nombre y apellido de todos los empleados que tienen el mismo cargo que 
----Carmen Velásquez
+--4. Liste los empleados cuyo salario es al menos como el promedio de salario
+SELECT DISTINCT E.FIRST_NAME EMPLEADO 
+FROM S_EMP E, S_SALARY S 
+WHERE S.ID = E.ID AND 
+      S.PAYMENT >= (SELECT AVG(S.PAYMENT) FROM S_SALARY S);
+    
+-- 5. Liste los departamentos cuyo promedio de salario es superior al promedio general
+SELECT D.NAME DEPT , AVG(S.PAYMENT) PROMEDIO
+FROM S_DEPT D, S_SALARY S, S_EMP E
+WHERE E.ID = S.ID AND 
+      E.DEPT_ID = D.ID 
+GROUP BY D.NAME 
+HAVING AVG(S.PAYMENT) > (SELECT AVG(S.PAYMENT)
+                         FROM S_SALARY S);
 
-SELECT E.first_name||' '||E.last_name Empleado, E.title
-FROM s_emp E 
-WHERE E.title = (SELECT E.title  
-                    FROM s_emp E
-                    WHERE lower(E.first_name) like 'carmen%' AND 
-                    lower(E.last_name) like 'vela%');   
+-- 6. Liste los empleados que ganan el máximo salario por departamento.
+SELECT EMP.NOMBRE, MAXDP.DEPARTAMENTO, MAXDP.MAX 
+FROM ( SELECT DISTINCT E.FIRST_NAME NOMBRE, D.ID IDDP, S.PAYMENT SALARIO 
+       FROM S_EMP E, S_DEPT D, S_SALARY S
+       WHERE E.DEPT_ID = D.ID AND 
+             E.ID = S.ID) EMP, 
+     ( SELECT D.ID ID, D.NAME DEPARTAMENTO, MAX(S.PAYMENT) MAX
+       FROM S_DEPT D, S_EMP E, S_SALARY S
+       WHERE D.ID = E.DEPT_ID AND 
+             E.ID = S.ID 
+       GROUP BY D.ID, D.NAME) MAXDP 
+WHERE EMP.IDDP = MAXDP.ID AND 
+      EMP.SALARIO = MAXDP.MAX;
 
----2. Liste el apellido, el cargo y el Id del depto de todos los empleados que trabajan en el 
----mismo depto que Colin
+-- 7. Liste el ID, el apellido y el nombre del departamento de todos los empleados que 
+-- trabajan en un departamento que tengan al menos un empleado de apellido PATEL
+SELECT DISTINCT E.ID , E.LAST_NAME EMPLEADO , D.NAME DEPT 
+FROM S_EMP E, S_DEPT D 
+WHERE E.DEPT_ID = D.ID AND
+      D.ID IN (SELECT D.ID
+                FROM S_EMP E, S_DEPT D 
+                WHERE E.DEPT_ID = D.ID AND
+                      UPPER(E.LAST_NAME) LIKE 'PATEL%');
 
-SELECT DISTINCT E.last_name Apelledio, E.title Cargo, E.dept_id idDept
-FROM s_emp E
-WHERE E.dept_id = (SELECT E.dept_id   
-                FROM s_emp E
-                WHERE lower(E.first_name) like 'colin%');
-
----3. Liste los empleados que ganan el máximo salario
-
-SELECT E.first_name||' '||E.last_name Empleado, S.payment
-FROM s_emp E, s_salary S
-WHERE E.id = S.id AND 
-      S.payment = (SELECT max(S.payment) 
-                  FROM s_salary S);
-
----4. Liste los empleados cuyo salario es al menos como el promedio de salario
-
-SELECT DISTINCT E.first_name||' '||E.last_name Empleado 
-FROM s_emp E, s_salary S
-WHERE E.id = S.id AND 
-      S.payment >= (SELECT avg(S.payment) 
-                  FROM s_salary S);
-
----5. Liste los departamentos cuyo promedio de salario es superior al promedio general
-
-SELECT DISTINCT D.name 
-FROM s_emp E, s_dept D, s_salary S
-WHERE E.dept_id = D.id AND 
-    S.payment > (SELECT avg(S.payment) 
-                FROM s_salary S );
-
----6. Liste los empleados que ganan el máximo salario por departamento.
-
-SELECT E.first_name, E.last_name, E.dept_id idDept
-FROM s_emp E, s_salary S, 
-    (SELECT E.dept_id Depto, max(S.payment) maxSal 
-    FROM s_emp E, s_salary S
-    WHERE E.id = S.id 
-    GROUP BY E.dept_id 
-    ) PD    
-WHERE E.id = S.id AND  
-    E.dept_id = PD.Depto
-GROUP BY E.first_name, E.last_name, E.dept_id, PD.maxSal 
-HAVING max(S.payment) = PD.maxSal;
-
----7. Liste el ID, el apellido y el nombre del departamento de todos los empleados que 
----trabajan en un departamento que tengan al menos un empleado de apellido PATEL
-
-SELECT DISTINCT E.id , E.last_name Apellido, D.name Depart 
-FROM s_emp E, s_dept D 
-WHERE E.dept_id in (SELECT E.dept_id 
-            FROM s_emp E 
-            WHERE lower(E.last_name) like 'patel%');
-
----8. Liste el ID, el apellido y la fecha de entrada de todos los empleados cuyos salarios 
----son menores que el promedio general de salario y trabajan en algún departamento 
----que cuente con un empleado de nombre PATEL
-
-SELECT DISTINCT E.id, E.last_name Apellido, E.start_date FechaEntrada 
-FROM s_emp E, s_salary S
-WHERE E.id = S.id AND 
-      S.payment < (SELECT avg(S.payment) 
-                   FROM s_salary S)
+-- 8. Liste el ID, el apellido y la fecha de entrada de todos los empleados cuyos salarios 
+-- son menores que el promedio general de salario y trabajan en algún departamento 
+-- que cuente con un empleado de apellido PATEL
+SELECT E.ID, E.LAST_NAME APELLIDO, E.START_DATE ENTRADA 
+FROM S_EMP E, S_SALARY S 
+WHERE E.ID = S.ID AND
+      S.PAYMENT < (SELECT AVG(S.PAYMENT) FROM S_SALARY S) 
 INTERSECT 
-SELECT E.id, E.last_name Apellido, E.start_date FechaEntrada 
-FROM s_emp E
-WHERE E.dept_id IN (SELECT E.dept_id
-                   FROM s_emp E
-                   WHERE lower(E.last_name) like 'patel%');
+SELECT E.ID, E.LAST_NAME APELLIDO, E.START_DATE ENTRADA 
+FROM S_EMP E,S_DEPT D
+WHERE E.DEPT_ID = D.ID AND
+      D.ID IN (SELECT D.ID
+                FROM S_EMP E, S_DEPT D 
+                WHERE E.DEPT_ID = D.ID AND
+                      UPPER(E.LAST_NAME) LIKE 'PATEL%');
 
----9. Liste el Id del cliente, el nombre y el record de ventas de todos los clientes que están 
----localizados en North Americam o tienen a Magee como representante de ventas. 
----Trabajar todo el ejercicio con select anidados.
-
-SELECT C.id , C.name nombre, COUNT(O.id) ventas
-FROM s_customer C
-LEFT JOIN s_ord O ON C.id = O.customer_id
-WHERE C.region_id IN (SELECT R.id
+-- 9. Liste el Id del cliente, el nombre y el record de ventas de todos los clientes que están 
+-- localizados en North Americam o tienen a Magee como representante de ventas. 
+-- Trabajar todo el ejercicio con select anidados.
+SELECT C.ID , C.NAME NOMBRE, MAX(O.TOTAL) RECORD 
+FROM S_CUSTOMER C
+INNER JOIN S_ORD O ON C.ID = O.CUSTOMER_ID 
+WHERE C.REGION_ID IN (SELECT R.id
                       FROM s_region R 
                       WHERE lower(R.name) like 'north&')
-OR C.sales_rep_id IN (SELECT E.id 
+OR C.SALES_REP_ID IN (SELECT E.id 
                       FROM s_emp E
                       WHERE lower(E.last_name) like 'mage%')
-GROUP BY C.id, C.name;
+GROUP BY C.ID, C.NAME;
 
----10. Liste los empleados que ganan en promedio más que el promedio de salario de su 
----departamento (siempre que se hable de departamento se debe tener la región, ya que 
----los departamentos tienen igual nombre, pero son diferentes) 
+-- 10. Liste los empleados que ganan en promedio más que el promedio de salario de su 
+-- departamento (siempre que se hable de departamento se debe tener la región, ya que 
+-- los departamentos tienen igual nombre, pero son diferentes) 
+SELECT E.ID ID_EMP, E.REGION_ID, E.DEPT_ID, AVG_DEPT.AVG AVG_DEPT, AVG(S.PAYMENT) AVG_EMP
+FROM S_EMP E
+INNER JOIN (
+  SELECT D.ID AS DEPT_ID, D.REGION_ID AS REGION_ID, AVG(S1.PAYMENT) AVG
+  FROM S_DEPT D
+  INNER JOIN S_EMP E ON (D.ID = E.DEPT_ID AND E.REGION_ID = D.REGION_ID)
+  INNER JOIN S_SALARY S1 ON E.ID = S1.ID
+  GROUP BY (D.ID, D.REGION_ID)
+) AVG_DEPT ON (E.DEPT_ID = AVG_DEPT.DEPT_ID AND E.REGION_ID = AVG_DEPT.REGION_ID)
+INNER JOIN S_SALARY S ON E.ID = S.ID
+GROUP BY (E.ID, E.REGION_ID, E.DEPT_ID, AVG_DEPT.AVG)
+HAVING AVG(S.PAYMENT)>AVG_DEPT.AVG;
 
-SELECT E.first_name, E.last_name
-FROM s_emp E, s_salary S, 
-(
-    SELECT E.dept_id Depto, avg(S.payment) avgDepto
-    FROM s_emp E, s_salary S
-    WHERE E.id = S.id
-    GROUP BY E.dept_id
-) PD
-WHERE E.id = S.id AND
-      E.dept_id = PD.Depto 
-GROUP BY E.first_name, E.last_name, PD.avgDepto
-HAVING avg(S.payment) > PD.avgDepto;
+-- 11. Listar los empleados a cargo de los vicepresidentes
 
----11. Listar los empleados a cargo de los vicepresidentes
+SELECT E.FIRST_NAME EMPLEADO 
+FROM S_EMP E, S_EMP J 
+WHERE E.MANAGER_ID = J.ID AND 
+      J.ID IN (SELECT J.ID 
+                FROM S_EMP J 
+                WHERE UPPER(J.TITLE) LIKE ('VP%'));
 
-Select E.first_name ||' '|| E.last_name Empleados
-from s_emp J, s_emp E
-where J.id = E.manager_id AND 
-      J.id IN (SELECT J.id 
-              FROM s_emp J 
-              WHERE lower(J.title) like 'vp%');
+-- 12. Listar los empleados que trabajan en el mismo departamento que Ngao
+SELECT DISTINCT E.ID , E.LAST_NAME EMPLEADO , D.NAME DEPT 
+FROM S_EMP E, S_DEPT D 
+WHERE E.DEPT_ID = D.ID AND
+      D.ID IN (SELECT D.ID
+                FROM S_EMP E, S_DEPT D 
+                WHERE E.DEPT_ID = D.ID AND
+                      UPPER(E.LAST_NAME) LIKE 'NGAO%');
 
----12. Listar los empleados que trabajan en el mismo departamento que Ngao
+-- 13. Liste el promedio de salario de todos los empelados que tienen el mismo cargo que 
+-- Havel
+SELECT AVG(S.PAYMENT) AVGSAL , E.FIRST_NAME EMPLEADO
+FROM S_EMP E, S_SALARY S 
+WHERE E.ID = S.ID AND 
+      E.TITLE = (SELECT E.TITLE 
+                FROM S_EMP E 
+                WHERE UPPER(E.LAST_NAME) LIKE 'HAVEL%')
+GROUP BY E.FIRST_NAME; 
 
-Select E.first_name ||' '|| E.last_name Empleados
-from s_emp E
-where E.dept_id = (SELECT E.dept_id
-              FROM s_emp E 
-              WHERE lower(E.last_name) like 'ngao%');
+-- 14. Cuantos empleados ganan igual que Giljum Henry
+SELECT COUNT(E.ID)
+FROM S_EMP E, S_SALARY S 
+WHERE E.ID = S.ID 
+GROUP BY E.ID 
+HAVING SUM(S.PAYMENT) = (SELECT SUM(S.PAYMENT)
+                        FROM S_EMP E, S_SALARY S 
+                        WHERE E.ID = S.ID AND 
+                            UPPER(E.FIRST_NAME) LIKE 'HENRY%' AND 
+                            UPPER(E.LAST_NAME) LIKE 'GILJUM' ); 
 
---13. Liste el promedio de salario de todos los empelados que tienen el mismo cargo que 
----Havel
+--15. Liste todos los empleados que no están a cargo de un Administrador de bodega 
+SELECT E.FIRST_NAME ||' '||E.LAST_NAME EMPLEADOS 
+FROM S_EMP E 
+INNER JOIN S_EMP J ON E.ID = J.ID AND 
+                   E.MANAGER_ID NOT IN (SELECT E.MANAGER_ID 
+                   FROM S_EMP E
+                   WHERE UPPER(E.TITLE) LIKE '%WAREHOUSE MANAGER%');
 
-SELECT E.first_name Nombre, E.last_name Apellido, E.title, AVG(S.payment) AS salario
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id
-WHERE E.title = (SELECT E.title
-                 FROM s_emp E
-                 WHERE lower(E.last_name) LIKE 'havel%')
-GROUP BY E.first_name, E.last_name, E.title;
+SELECT E.FIRST_NAME ||' '||E.LAST_NAME EMPLEADOS 
+FROM S_EMP E 
+WHERE E.MANAGER_ID NOT IN (SELECT E.MANAGER_ID 
+                            FROM S_EMP E
+                            WHERE UPPER(E.TITLE) LIKE '%WAREHOUSE MANAGER%');
 
----14. Cuantos empleados ganan igual que Giljum Henry
+-- 16. Calcule el promedio de salario por departamento de todos los empleados que 
+-- ingresaron a la compañía en el mimo año que Smith George
+SELECT E.ID, E.LAST_NAME APELLIDO, E.START_DATE ENTRADA , AVG(S.PAYMENT)
+FROM S_EMP E, S_SALARY S 
+WHERE E.ID = S.ID AND
+      EXTRACT(YEAR FROM E.START_DATE) = (SELECT EXTRACT(YEAR FROM E.START_DATE)
+                                        FROM S_EMP E 
+                                        WHERE UPPER(E.FIRST_NAME) LIKE 'GEORGE%' AND 
+                                              UPPER(E.LAST_NAME) LIKE 'SMITH%')       
+GROUP BY E.ID, E.LAST_NAME, E.START_DATE;
 
-SELECT COUNT(E.id) Empleados
-FROM s_emp E
-WHERE E.salary = (SELECT E.salary
-                   FROM s_emp E 
-                   WHERE lower(E.first_name) like 'henry%' AND 
-                         lower(E.last_name) like 'giljum%');
-
----15. Liste todos los empleados que no están a cargo de un Administrador de bodega
-
-SELECT E.first_name || ' ' || E.last_name empleado
-FROM s_emp E
-LEFT JOIN (SELECT id, first_name, last_name, title
-          FROM s_emp
-          WHERE lower(title) LIKE '%warehouse%manager%') J 
-ON E.id = J.id;
-
----16. Calcule el promedio de salario por departamento de todos los empleados que 
----ingresaron a la compañía en el mimo año que Smith George
-
-SELECT D.name Departamento, E.first_name Nombre, E.last_name Apelledio, AVG(S.payment) Salario 
-FROM s_emp E, s_salary S, s_dept D  
-WHERE EXTRACT(YEAR FROM E.start_date) = (SELECT EXTRACT(YEAR FROM E.start_date)
-                                        FROM s_emp E 
-                                        WHERE lower(E.first_name) like 'george%'
-                                        AND lower(E.last_name) like 'smith')
-AND E.dept_id = D.id
-GROUP BY D.name,E.first_name,E.last_name;  
-
----17. Liste el promedio de ventas de los empleados que están a cargo de los 
----vicepresidentes comerciales.
-
+-- 17. Liste el promedio de ventas de los empleados que están a cargo de los 
+-- vicepresidentes comerciales.
 SELECT E.first_name Nombre, E.last_name Apelledio, AVG(O.id) Ventas 
-FROM s_emp E
-JOIN s_ord O ON E.id = O.sales_rep_id
-WHERE E.manager_id IN (SELECT E.id 
+FROM s_emp E, s_ord O 
+WHERE E.id = O.sales_rep_id AND 
+      E.manager_id IN (SELECT E.id 
                        FROM s_emp E 
                        WHERE lower(E.title) like 'vp, sales%')
 GROUP BY E.first_name,E.last_name;
 
----18. Liste el salario mensual de cada uno de los empleados teniendo en cuenta la 
----comisión por venta
+-- 18. Liste el salario mensual de cada uno de los empleados teniendo en cuenta la 
+-- comisión por venta
+SELECT EXTRACT(YEAR FROM S.DATEPAYMENT) YEAR, EXTRACT(MONTH FROM S.DATEPAYMENT) MONTH, SUM(S.PAYMENT + (O.TOTAL * NVL(E.COMMISSION_PCT, 0))) PAYMENT_COMMISSION
+FROM S_EMP E 
+INNER JOIN S_SALARY S ON E.ID = S.ID
+INNER JOIN S_ORD O ON O.SALES_REP_ID = E.ID
+GROUP BY EXTRACT(YEAR FROM S.DATEPAYMENT), EXTRACT(MONTH FROM S.DATEPAYMENT);
 
-SELECT TO_CHAR(S.datePayment, 'MM') AS Mes,
-       E.first_name AS Nombre,
-       E.last_name AS Apellido,
-       AVG(S.payment + (O.total * E.commission_pct/100)) AS SalarioMensual
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id 
-JOIN s_ord O ON E.id = O.sales_rep_id
-GROUP BY TO_CHAR(S.datePayment, 'MM'), E.first_name, E.last_name;
+-- 19. Liste los empleados que atienden una bodega y que han hecho alguna venta
+SELECT E.FIRST_NAME EMPLEADO 
+FROM S_EMP E, S_WAREHOUSE W
+WHERE E.ID = W.MANAGER_ID AND
+      E.ID IN (SELECT E.ID 
+              FROM S_EMP E, S_ORD O 
+              WHERE E.ID = O.SALES_REP_ID );
 
----19. Liste los empleados que atienden una bodega y que han hecho alguna venta
+-- 20. Liste el número de orden e ítem de las ordenes con mas de 2 ítem
+SELECT O.ID, I.ITEM_ID 
+FROM S_ORD O, S_ITEM I
+WHERE O.ID = I.ORD_ID AND 
+      O.ID IN ( SELECT I.ORD_ID 
+                FROM S_ITEM I
+                GROUP BY (I.ORD_ID)
+                HAVING COUNT (I.ORD_ID) > 2);
 
-SELECT E.first_name AS Nombre, E.last_name AS Apellido
-FROM s_emp E
-JOIN s_warehouse W ON E.id = W.manager_id
-WHERE EXISTS (SELECT O.id
-              FROM s_ord O, s_emp E
-              WHERE O.sales_rep_id = E.id);
+-- 21. Liste el promedio de salario por nombre de cargo, de los cargos con mas de dos 
+-- trabajadores
 
----20. Liste el número de orden e ítem de las ordenes con mas de 2 ítem
+SELECT E.TITLE CARGO, AVG(S.PAYMENT) PSALARIO 
+FROM S_EMP E, S_SALARY S 
+WHERE E.ID = S.ID AND 
+      E.TITLE IN (SELECT E.TITLE 
+                    FROM S_EMP E 
+                    GROUP BY (E.TITLE) 
+                    HAVING COUNT(E.TITLE) > 2)
+GROUP BY E.TITLE; 
 
-SELECT O.id Orden, I.item_id 
-FROM s_item I,s_ord O 
-WHERE I.ord_id  = o.id AND 
-    O.id IN (SELECT O.id 
-             FROM s_item I, s_ord O 
-             WHERE I.ord_id = O.id 
-             GROUP BY O.id
-             HAVING COUNT(I.item_id) > 2 );
+-- 22. Liste los clientes y sus representantes de ventas que tienen más de 2 clientes 
+SELECT C.NAME CLIENTE, E.FIRST_NAME EMPLEADO 
+FROM S_CUSTOMER C, S_EMP E 
+WHERE E.ID = C.SALES_REP_ID AND 
+      C.SALES_REP_ID IN (SELECT C.SALES_REP_ID
+                FROM S_CUSTOMER C 
+                GROUP BY C.SALES_REP_ID 
+                HAVING COUNT(C.SALES_REP_ID) > 2); 
+    
+-- 23. Liste el salario promedio de cada representante de ventas (id y nombre), teniendo en 
+-- cuenta que la comisión se asigna sobre las ventas del mes. 
+SELECT E.ID, E.FIRST_NAME || ' ' || E.LAST_NAME EMPLEADO, 
+AVG(S.PAYMENT + NVL(E.COMMISSION_PCT, 0)/100 * NVL(V.TOTAL, 0)) AVG 
+FROM S_EMP E, S_SALARY S, S_ORD O, 
+(
+  SELECT EXTRACT(MONTH FROM O.DATE_ORDERED) MONTH, E.ID, SUM(O.TOTAL) TOTAL
+  FROM S_EMP E, S_ORD O
+  WHERE E.ID = O.SALES_REP_ID
+  GROUP BY EXTRACT(MONTH FROM O.DATE_ORDERED), E.ID
+) V
+WHERE S.ID = E.ID AND
+    V.MONTH = EXTRACT(MONTH FROM S.DATEPAYMENT) AND 
+    V.ID = E.ID AND
+    E.ID = O.SALES_REP_ID
+GROUP BY E.ID, E.FIRST_NAME,E.LAST_NAME;
 
----21. Liste el promedio de salario por nombre de cargo, de los cargos con mas de dos 
----trabajadores
+-- 24. Generar un listado con el promedio devengado (incluidas comisiones) en el 2011 de 
+-- todos los empleados.
+SELECT E.FIRST_NAME EMP, AVG(S.PAYMENT + COALESCE(O.TOTAL * (E.COMMISSION_PCT/100), 0)) PROM 
+FROM S_EMP E, S_SALARY S, S_ORD O 
+WHERE E.ID = S.ID AND 
+      EXTRACT(YEAR FROM S.DATEPAYMENT) = '2011'
+GROUP BY E.FIRST_NAME; 
 
-SELECT AVG(S.payment) PromSal, E.title Cargo
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id
-GROUP BY E.title
-HAVING COUNT(*) > 2;
+-- 25. Seleccionar los empleados (nombres) que han ganado en algún mes menos que el 
+-- promedio del mes.
+SELECT E.FIRST_NAME EMP
+FROM S_EMP E , S_SALARY S 
+WHERE E.ID = S.ID 
+GROUP BY E.FIRST_NAME
+HAVING AVG(S.PAYMENT) < ANY (SELECT AVG(S.PAYMENT)
+                        FROM S_SALARY S 
+                        GROUP BY EXTRACT(MONTH FROM S.DATEPAYMENT));
 
----22. Liste los clientes y sus representantes de ventas que tienen más de 2 clientes
+-- 26. Seleccionar los empleados que han ganado menos que el promedio de algún 
+-- departamento.
+SELECT E.FIRST_NAME EMP
+FROM S_EMP E , S_SALARY S 
+WHERE E.ID = S.ID 
+GROUP BY E.FIRST_NAME
+HAVING AVG(S.PAYMENT) < ANY (SELECT AVG(S.PAYMENT) 
+                        FROM S_SALARY S , S_DEPT D , S_EMP E 
+                        WHERE S.ID = E.ID AND 
+                              E.DEPT_ID = D.ID  
+                        GROUP BY D.ID);
 
-SELECT C.name Cliente, E.first_name||' '||E.last_name representante 
-FROM s_customer C
-JOIN s_emp E ON C.sales_rep_id = E.id 
-WHERE C.sales_rep_id IN (SELECT C.sales_rep_id 
-                        FROM s_customer C 
-                        GROUP BY C.sales_rep_id
-                        HAVING COUNT(*) > 2);
+-- 27. Seleccionar los productos que han pedido menos que alguna cantidad en stock
+SELECT P.NAME 
+FROM S_PRODUCT P, S_ITEM I
+WHERE I.PRODUCT_ID = P.ID 
+GROUP BY P.NAME 
+HAVING SUM(I.QUANTITY) < ANY (SELECT DISTINCT I.AMOUNT_IN_STOCK 
+                              FROM S_INVENTORY I);
 
----23. Liste el salario promedio de cada representante de ventas (id y nombre), teniendo en 
----cuenta que la comisión se asigna sobre las ventas del mes. 
+-- 28. Seleccionar los clientes que han pedido cantidades mayores que el promedio en US 
+-- de pedido por orden, por mes o por producto. 
+SELECT C.NAME 
+FROM S_CUSTOMER C, S_ORD O, S_ITEM I 
+WHERE O.CUSTOMER_ID = C.ID AND
+      I.ORD_ID = O.ID
+GROUP BY C.NAME 
+HAVING SUM(I.QUANTITY) > ANY ( SELECT AVG(I.QUANTITY) QUANTITY 
+                                               FROM S_CUSTOMER C, S_ORD O, S_ITEM I , S_REGION R 
+                                               WHERE O.CUSTOMER_ID = C.ID AND
+                                                     I.ORD_ID = O.ID AND 
+                                                     R.ID = C.REGION_ID AND 
+                                                     UPPER(R.NAME) = 'NORTH AMERICA%'
+                                               GROUP BY O.ID
+                                               UNION
+                                               SELECT AVG(I.QUANTITY) QUANTITY 
+                                               FROM S_CUSTOMER C, S_ORD O, S_ITEM I, S_REGION R
+                                               WHERE O.CUSTOMER_ID = C.ID AND
+                                                     I.ORD_ID = O.ID AND 
+                                                     R.ID = C.REGION_ID AND 
+                                                     UPPER(R.NAME) = 'NORTH AMERICA'
+                                               GROUP BY EXTRACT(MONTH FROM O.DATE_ORDERED)
+                                               UNION
+                                               SELECT AVG(I.QUANTITY) QUANTITY 
+                                               FROM S_CUSTOMER C, S_ORD O, S_ITEM I, S_REGION R, S_PRODUCT P 
+                                               WHERE O.CUSTOMER_ID = C.ID AND
+                                                     I.ORD_ID = O.ID AND 
+                                                     P.ID = I.PRODUCT_ID AND 
+                                                     R.ID = C.REGION_ID AND 
+                                                     UPPER(R.NAME) = 'NORTH AMERICA'
+                                               GROUP BY P.ID);
 
-SELECT E.id ID,
-       E.first_name || ' ' || E.last_name  Nombre,
-       AVG(S.payment + (O.total * E.commission_pct/100)) SalarioPromedio
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id
-JOIN s_ord O ON E.id = O.sales_rep_id
-GROUP BY E.id, E.first_name, E.last_name;
 
----24. Generar un listado con el promedio devengado (incluidas comisiones) en el 2011 de 
----todos los empleados.
 
-SELECT E.id AS ID,
-       E.first_name || ' ' || E.last_name AS Nombre,
-       AVG(S.payment + COALESCE(O.total * E.commission_pct/100, 0)) AS PromedioDevengado
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id
-LEFT JOIN s_ord O ON E.id = O.sales_rep_id
-WHERE TO_CHAR(S.datePayment, 'YYYY') = '2011'
-GROUP BY E.id, E.first_name, E.last_name;
-
----25. Seleccionar los empleados (nombres) que han ganado en algún mes menos que el 
----promedio del mes.
-
-SELECT E.id AS ID,
-       E.first_name || ' ' || E.last_name AS Nombre
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id
-LEFT JOIN s_ord O ON E.id = O.sales_rep_id
-WHERE S.payment + COALESCE(O.total * E.commission_pct/100, 0) <
-      (
-        SELECT AVG(S.payment + COALESCE(O.total * E.commission_pct/100, 0))
-        FROM s_emp E2
-        JOIN s_salary S2 ON E2.id = S2.id
-        LEFT JOIN s_ord O2 ON E2.id = O2.sales_rep_id
-        WHERE TO_CHAR(S2.datePayment, 'MM') = TO_CHAR(S.datePayment, 'MM')
-      );
-
----26. Seleccionar los empleados que han ganado menos que el promedio de algún 
----departamento.
-
-SELECT E.id AS ID,
-       E.first_name || ' ' || E.last_name AS Nombre,
-       E.dept_id AS Departamento,
-       S.payment + COALESCE(O.total * E.commission_pct/100, 0) AS Salario,
-       (SELECT AVG(S.payment + COALESCE(O.total * E.commission_pct/100, 0))
-         FROM s_emp E
-         JOIN s_salary S ON E.id = S.id
-         LEFT JOIN s_ord O ON E.id = O.sales_rep_id
-         WHERE E.dept_id = E.dept_id
-       ) AS PromDept
-FROM s_emp E
-JOIN s_salary S ON E.id = S.id
-LEFT JOIN s_ord O ON E.id = O.sales_rep_id;
-
----27. Seleccionar los productos que han pedido menos que alguna cantidad en stock.
-
-select  P.name Producto,
-        sum(I.quantity_shipped) as "# Pedidos"
-from    s_product P,
-        s_item I
-where   I.product_id = P.id
-GROUP BY P.name
-HAVING sum(I.quantity_shipped) < any (
-        SELECT amount_in_stock
-        from s_inventory
-);
-
----28. Seleccionar los clientes que han pedido cantidades mayores que el promedio en US 
----de pedido por orden, por mes o por product
-
-SELECT C.name nombre,
-    sum(I.quantity_shipped) Cantidad_pedidos
-FROM s_customer C,
-    s_ord O,
-    s_item I
-WHERE C.id = O.customer_id
-    AND O.id = I.ord_id
-GROUP BY BY C.name
-HAVING sum(I.quantity_shipped) > (
-    -- Por orden
-        select avg(P.pedidos) 
-        from (
-                select sum(I.quantity_shipped) Pedidos
-                from s_region R,
-                    s_customer C,
-                    s_ord O,
-                    s_item I
-                where R.id = C.region_id
-                    and C.id = O.customer_id
-                    and O.id = I.ord_id
-                    and lower(R.name) like 'north%'
-                group by I.ord_id
-            ) P
-    )
-    -- Por mes
-    or sum(I.quantity_shipped) > (
-        select avg(P.pedidos)
-        from (
-                select sum(I.quantity_shipped) Pedidos
-                from s_region R,
-                    s_customer C,
-                    s_ord O,
-                    s_item I
-                where R.id = C.region_id
-                    and C.id = O.customer_id
-                    and O.id = I.ord_id
-                    and lower(R.name) like 'north%'
-                group by to_char(O.date_ordered, 'MM')
-            ) P
-    )
-    -- Por producto
-    or sum(I.quantity_shipped) > (
-        select avg(P.pedidos)
-        from (
-                select sum(I.quantity_shipped) Pedidos
-                from s_region R,
-                    s_customer C,
-                    s_ord O,
-                    s_item I
-                where R.id = C.region_id
-                    and C.id = O.customer_id
-                    and O.id = I.ord_id
-                    and lower(R.name) like 'north%'
-                group by I.product_id
-            ) P
-    );
