@@ -1,3 +1,27 @@
+--1. Seleccione el nombre y apellido de todos los empleados que tienen el mismo cargo 
+--que Carmen Velásquez
+SELECT E.FIRST_NAME || ' ' || E.LAST_NAME NOMBRE
+FROM S_EMP E
+WHERE E.TITLE =
+    (
+        SELECT E.TITLE
+        FROM S_EMP E
+        WHERE UPPER(E.FIRST_NAME) = 'CARMEN' AND 
+        UPPER(E.LAST_NAME) = 'VELASQUEZ'
+    );
+    
+--2. Liste el apellido, el cargo y el Id del depto de todos los empleados que trabajan en el 
+--mismo depto que Colin
+SELECT DISTINCT E.LAST_NAME APELLIDO, E.TITLE CARGO, D.ID DEPARTAMENTO
+FROM S_EMP E, S_DEPT D
+WHERE E.DEPT_ID = D.ID AND
+    E.DEPT_ID =
+    (
+        SELECT E.DEPT_ID
+        FROM S_EMP E
+        WHERE UPPER(E.FIRST_NAME) = 'COLIN'
+    );
+
 -- 3. Liste los empleados que ganan el máximo salario 
 SELECT E.FIRST_NAME EMPLEADO 
 FROM S_EMP E, S_SALARY S 
